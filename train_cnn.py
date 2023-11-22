@@ -70,7 +70,7 @@ if __name__ == '__main__':
     device = torch.device('cuda:0')
     record_path = 'records/CNN'
     if not os.path.isdir(record_path):
-        os.mkdir(record_path)
+        os.makedirs(record_path)
 
     record_txt = f'{record_path}/{get_timeString()}.txt'
 
