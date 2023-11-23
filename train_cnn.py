@@ -47,12 +47,14 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', dest='epochs')
     parser.add_argument('--train_times', dest='train_times')
     parser.add_argument('--learning_rate', dest='learning_rate')
+    parser.add_argument('--valid_size', dest='valid_size')
     parameter_args = parser.parse_args()
 
     dataset_name = parameter_args.dataset
     epochs = int(parameter_args.epochs)
     train_times = int(parameter_args.train_times)
     learning_rate = float(parameter_args.learning_rate)
+    valid_size = float(parameter_args.valid_size)
 
     # %%
     # Datasets
@@ -67,8 +69,8 @@ if __name__ == '__main__':
     # epochs = 50
     # train_times = 100
     # learning_rate = 0.05 # Mnist 0.05 Fashion 0.005 Cifar 0.005
-
-    valid_size = 1/6
+    # valid_size = 1/6
+    
     random_seed = 3
     batch_size = 128
     num_workers = 4
