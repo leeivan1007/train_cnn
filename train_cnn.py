@@ -38,52 +38,50 @@ def simple_acc(number, decimal, complement):
 
     return number
 
+def set_seed(seed):
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
-    # %%
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Evaluate trained RL model on MNIST dataset.')
     parser.add_argument('--dataset', dest='dataset')
-    parser.add_argument('--epochs', dest='epochs')
-    parser.add_argument('--train_times', dest='train_times')
-    parser.add_argument('--learning_rate', dest='learning_rate')
-    parser.add_argument('--valid_size', dest='valid_size')
+    parser.add_argument('--random_seed', dest='random_seed')
     parameter_args = parser.parse_args()
 
     dataset_name = parameter_args.dataset
-    epochs = int(parameter_args.epochs)
-    train_times = int(parameter_args.train_times)
-    learning_rate = float(parameter_args.learning_rate)
-    valid_size = float(parameter_args.valid_size)
+    random_seed = int(parameter_args.random_seed)
 
     # %%
     # Datasets
+    # dataset_name = 'Mnist'
+    # random_seed = 1
 
-
-    data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Resize([60, 60]),
-    ])
-
-    # dataset_name = 'Fashion'
-    # epochs = 50
-    # train_times = 100
-    # learning_rate = 0.05 # Mnist 0.05 Fashion 0.005 Cifar 0.005
-    # valid_size = 1/6
-    
-    random_seed = 3
+    epochs = 300
     batch_size = 128
     num_workers = 4
+    set_seed(random_seed)
+
+    data_transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
 
     if dataset_name == 'Fashion':
         train_data = datasets.FashionMNIST(root='data/', train=True, download=True, transform=data_transform)
         test_data = datasets.FashionMNIST(root='data/', train=False, download=True, transform=data_transform)
+        valid_size, learning_rate = 0.1, 0.005
     elif dataset_name == 'Mnist':
         train_data =  datasets.MNIST(root='data/', train=True, download=True, transform=data_transform)
         test_data =  datasets.MNIST(root='data/', train=False, download=True, transform=data_transform)
+        valid_size, learning_rate = 1/6, 0.05
     elif dataset_name == 'Cifar10':
         train_data =  datasets.CIFAR10(root='data/', train=True, download=True, transform=data_transform)
         test_data =  datasets.CIFAR10(root='data/', train=False, download=True, transform=data_transform)
+        valid_size, learning_rate = 0.1, 0.005
 
     ######### Build valid dataset #########
 
@@ -91,7 +89,6 @@ if __name__ == '__main__':
     indices = list(range(num_train))
     split = int(np.floor(valid_size * num_train))
 
-    np.random.seed(random_seed)
     np.random.shuffle(indices)
 
     train_idx, valid_idx = indices[split:], indices[:split]
@@ -101,30 +98,26 @@ if __name__ == '__main__':
 
     ######### Build valid dataset #########
 
-
     trainloader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
     validloader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
-
-    # trainloader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=2)
     testloader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=2)
 
+    timeString = get_timeString()
     device = torch.device('cuda:0')
     record_path = f'records/CNN/{dataset_name}'
+    model_path = f'models/CNN/{timeString}/{dataset_name}'
+    best_model  = f'{model_path}/best.pt'
     if not os.path.isdir(record_path):
-        os.mkdir(record_path)
+        os.makedirs(record_path)
+    if not os.path.isdir(model_path):
+        os.makedirs(model_path)
 
-    record_txt = f'{record_path}/{get_timeString()}.txt'
-
-    with open(record_txt, "a+") as outfile:
-        outfile.writelines(f'Dataset: {dataset_name}')
-        outfile.writelines('\n')
-
+    record_txt = f'{record_path}/record.txt'
 
     # %%
     # Models
     channel = 3 if dataset_name == 'Cifar10' else 1
     fully_channel = (8*7*7) if dataset_name == 'Cifar10' else (8*6*6)
-
 
     class CNN(nn.Module):
 
@@ -170,83 +163,94 @@ if __name__ == '__main__':
         
 
     # %%
-    for t in range(train_times):
 
-        model = CNN().to(device)
+    model = CNN().to(device)
 
-        optimizer_mlp = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-        criterion = nn.CrossEntropyLoss()
+    optimizer_mlp = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    criterion = nn.CrossEntropyLoss()
 
-        train_acc_list = []
-        test_acc_list = []
+    train_acc_list = []
+    valid_acc_list = []
+    best_acc = 0 
 
-        for epoch in range(epochs):
-            
-            model.train()
-            running_loss = 0.0
-            correct = 0
-            total = 0
+    for epoch in range(epochs):
+        
+        model.train()
+        running_loss = 0.0
+        correct = 0
+        total = 0
 
-            for i, data in enumerate(trainloader, 0):
-                inputs, labels = data
-                inputs, labels = inputs.cuda(), labels.cuda()
+        for i, data in enumerate(trainloader, 0):
+            inputs, labels = data
+            inputs, labels = inputs.cuda(), labels.cuda()
 
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
 
-                optimizer_mlp.zero_grad()
-                loss.backward()
-                optimizer_mlp.step()
+            optimizer_mlp.zero_grad()
+            loss.backward()
+            optimizer_mlp.step()
 
-                running_loss += loss.item()
-
-                with torch.no_grad():
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-            
-            train_acc = round(correct / total, 4)
-            train_acc = 100 * train_acc
-            train_acc_list.append(train_acc)
-                
-            model.eval()
-            correct = 0
-            total = 0
+            running_loss += loss.item()
 
             with torch.no_grad():
-                for data in testloader:
-                    inputs, labels = data
-                    inputs = inputs.cuda()
-                    labels = labels.cuda()
-                    outputs = model(inputs)
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-
-            test_acc = round(correct / total, 4)
-            test_acc = 100 * test_acc
-            test_acc_list.append(test_acc)
-
-            # print(f'Train Acc: {train_acc} | Test Acc: {test_acc}')
-
-        train_max_index = train_acc_list.index(max(train_acc_list))
-        test_max_index = test_acc_list.index(max(test_acc_list))
-
-        max_trian_acc = max(train_acc_list)
-        max_test_acc = max(test_acc_list)
-        max_trian_acc = simple_acc(max_trian_acc , 3, 5)
-        max_test_acc = simple_acc(max_test_acc , 3, 5)
-
-        # param = sum([param.nelement() for param in model.parameters()])
-        print(f'T: {t+1} | lr: {learning_rate} | Best train acc: {max_trian_acc} at {train_max_index} | Best test acc: {max_test_acc} at {test_max_index}')
-        info =  f"T: {get_timeString()} | lr: {learning_rate} | Best train acc: {max_trian_acc} at {train_max_index} | Best test acc: {max_test_acc} at {test_max_index}"
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
         
-        with open(record_txt, "a+") as outfile:
-            outfile.writelines(info)
-            outfile.writelines('\n')
+        train_acc = round(correct / total, 4)
+        train_acc = 100 * train_acc
+        train_acc_list.append(train_acc)
+            
+        model.eval()
+        correct = 0
+        total = 0
 
-    # %%
+        with torch.no_grad():
+            for data in validloader:
+                inputs, labels = data
+                inputs, labels = inputs.cuda(), labels.cuda()
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
+        valid_acc = round(correct / total, 4)
+        valid_acc = 100 * valid_acc
+        valid_acc_list.append(valid_acc)
+
+        if valid_acc > best_acc:
+            best_acc = valid_acc
+            torch.save(model, best_model)
+
+    train_max_index = train_acc_list.index(max(train_acc_list))
+    valid_max_index = valid_acc_list.index(max(valid_acc_list))
+
+    max_trian_acc = max(train_acc_list)
+    max_valid_acc = max(valid_acc_list)
+    max_trian_acc = simple_acc(max_trian_acc , 3, 5)
+    max_valid_acc = simple_acc(max_valid_acc , 3, 5)
+
+    model = torch.load(best_model)
+
+    with torch.no_grad():
+        for data in testloader:
+            inputs, labels = data
+            inputs, labels = inputs.cuda(), labels.cuda()
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    valid_acc = round(correct / total, 4)
+    valid_acc = 100 * valid_acc
+    
+    info =  f"Time: {timeString} | train acc: {max_trian_acc} at {train_max_index} | valid acc: {max_valid_acc} at {valid_max_index} | test acc: {valid_acc} | random seed: {random_seed}"
+    print(info)
+
+    with open(record_txt, "a+") as outfile:
+        outfile.writelines(info)
+        outfile.writelines('\n')
 
     # %%
 
