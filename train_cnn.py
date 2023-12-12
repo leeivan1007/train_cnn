@@ -56,7 +56,7 @@ if __name__ == '__main__':
     dataset_name = parameter_args.dataset
     if type(parameter_args.random_seed) == str:
         random_seed = int(parameter_args.random_seed)
-    else: parameter_args.random_seed == None:
+    elif parameter_args.random_seed == None:
         random_seed = None
 
     folder_path = f'../../records'
