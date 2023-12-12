@@ -59,7 +59,7 @@ if __name__ == '__main__':
     elif parameter_args.random_seed == None:
         random_seed = None
 
-    folder_path = f'../../records'
+    folder_path = f'../..'
 
     # %%
     # Datasets
@@ -111,8 +111,8 @@ if __name__ == '__main__':
     timeString = get_timeString()
     device = torch.device('cuda:0')
     
-    record_path = f'{folder_path}/CNN/{dataset_name}'
-    model_path = f'{folder_path}/CNN/{timeString}/{dataset_name}'
+    record_path = f'{folder_path}/records/CNN/{dataset_name}'
+    model_path = f'{folder_path}/models/CNN/{timeString}/{dataset_name}'
     best_model  = f'{model_path}/best.pt'
     if not os.path.isdir(record_path):
         os.makedirs(record_path)
