@@ -59,6 +59,8 @@ if __name__ == '__main__':
     else: parameter_args.random_seed == None:
         random_seed = None
 
+    folder_path = f'../../records'
+
     # %%
     # Datasets
     # dataset_name = 'Mnist'
@@ -108,14 +110,15 @@ if __name__ == '__main__':
 
     timeString = get_timeString()
     device = torch.device('cuda:0')
-    record_path = f'records/CNN/{dataset_name}'
-    model_path = f'models/CNN/{timeString}/{dataset_name}'
+    
+    record_path = f'{folder_path}/CNN/{dataset_name}'
+    model_path = f'{folder_path}/CNN/{timeString}/{dataset_name}'
     best_model  = f'{model_path}/best.pt'
     if not os.path.isdir(record_path):
         os.makedirs(record_path)
     if not os.path.isdir(model_path):
         os.makedirs(model_path)
-
+    
     record_txt = f'{record_path}/record.txt'
 
     # %%
