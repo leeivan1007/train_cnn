@@ -50,16 +50,20 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Evaluate trained RL model on MNIST dataset.')
     parser.add_argument('--dataset', dest='dataset')
-    parser.add_argument('--random_seed', dest='random_seed')
+    parser.add_argument('--random_seed', default=None, dest='random_seed')
     parameter_args = parser.parse_args()
 
     dataset_name = parameter_args.dataset
-    random_seed = int(parameter_args.random_seed)
+    if type(parameter_args.random_seed) == str:
+        random_seed = int(parameter_args.random_seed)
+    else: parameter_args.random_seed == None:
+        random_seed = None
 
     # %%
     # Datasets
     # dataset_name = 'Mnist'
     # random_seed = 1
+    if random_seed == None: random_seed = np.random.randint(np.iinfo(np.int32).max // 2)
 
     epochs = 300
     batch_size = 128
