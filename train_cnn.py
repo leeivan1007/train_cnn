@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     record_path = f'{folder_path}/records/CNN/{dataset_name}'
     model_path = f'{folder_path}/models/CNN/{timeString}/{dataset_name}'
-    best_model  = f'{model_path}/best.pt'
+    best_model  = f'{model_path}/{random_seed}.pt'
     if not os.path.isdir(record_path):
         os.makedirs(record_path)
     if not os.path.isdir(model_path):
