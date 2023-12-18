@@ -58,14 +58,16 @@ if __name__ == '__main__':
         random_seed = int(parameter_args.random_seed)
     elif parameter_args.random_seed == False:
         random_seed = False
-
     folder_path = f'../..'
 
     # %%
     # Datasets
     # dataset_name = 'Mnist'
     # random_seed = 1
-    if random_seed == False: random_seed = np.random.randint(np.iinfo(np.int32).max // 2)
+    
+    if random_seed == False: 
+        random_seed = int(time.time())
+        time.sleep(1)
 
     epochs = 300
     batch_size = 128
@@ -110,7 +112,6 @@ if __name__ == '__main__':
 
     timeString = get_timeString()
     device = torch.device('cuda:0')
-    
     record_path = f'{folder_path}/records/CNN/{dataset_name}'
     model_path = f'{folder_path}/models/CNN/{timeString}/{dataset_name}'
     best_model  = f'{model_path}/{random_seed}.pt'
@@ -118,7 +119,7 @@ if __name__ == '__main__':
         os.makedirs(record_path)
     if not os.path.isdir(model_path):
         os.makedirs(model_path)
-    
+
     record_txt = f'{record_path}/record.txt'
 
     # %%
@@ -191,22 +192,6 @@ if __name__ == '__main__':
             inputs, labels = data
             inputs, labels = inputs.cuda(), labels.cuda()
 
-            ########### shift test ###########
-    
-            batsh_s, channels, width, height = inputs.shape
-            shift_unit = 1
-            s_u = shift_unit * 2
-            copy_tensor = torch.zeros((batsh_s, channels, width+s_u, height+s_u)).to('cuda')
-    
-            init_pos = 1
-            ver_pos = shift_unit + random.randint(-1, 1)
-            her_pos = shift_unit + random.randint(-1, 1)
-    
-            copy_tensor[:, :, ver_pos: ver_pos+width, her_pos: her_pos+height] = inputs
-            inputs = copy_tensor[:, :, init_pos: init_pos+width, init_pos: init_pos+height]
-            
-            ########### shift test ###########
-            
             outputs = model(inputs)
             loss = criterion(outputs, labels)
 
@@ -267,8 +252,9 @@ if __name__ == '__main__':
 
     valid_acc = round(correct / total, 4)
     valid_acc = 100 * valid_acc
+    valid_acc = round(valid_acc, 2)
     
-    info =  f"Time: {timeString} | train acc: {max_trian_acc} at {train_max_index} | valid acc: {max_valid_acc} at {valid_max_index} | test acc: {valid_acc} | random seed: {random_seed}"
+    info =  f"Time: {timeString} | Train acc: {max_trian_acc} at {train_max_index} | Valid acc: {max_valid_acc} at {valid_max_index} | Test acc: {valid_acc} | Random seed: {random_seed}"
     print(info)
 
     with open(record_txt, "a+") as outfile:
