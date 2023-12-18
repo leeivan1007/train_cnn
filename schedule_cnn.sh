@@ -2,8 +2,8 @@
 
 dataset="$1"
 NUM="$2"
+slight_disturbance="$3"
 
 for (( i=1; i<=${NUM}; i++ )); do
-    echo "i=${i}"
-    python train_cnn.py --dataset ${dataset}
+    python train_cnn.py --dataset ${dataset} ${slight_disturbance}
 done
