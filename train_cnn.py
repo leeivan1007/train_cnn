@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluate trained RL model on MNIST dataset.')
     parser.add_argument('--dataset', dest='dataset')
     parser.add_argument('--random_seed', default=False, dest='random_seed')
+    parser.add_argument('--slight_disturbance', action="store_true", dest='slight_disturbance')
     parameter_args = parser.parse_args()
 
     dataset_name = parameter_args.dataset
@@ -59,7 +60,8 @@ if __name__ == '__main__':
     elif parameter_args.random_seed == False:
         random_seed = False
     folder_path = f'../..'
-
+    slight_disturbance = parameter_args.slight_disturbance
+    print(slight_disturbance)
     # %%
     # Datasets
     # dataset_name = 'Mnist'
@@ -91,8 +93,6 @@ if __name__ == '__main__':
         test_data =  datasets.CIFAR10(root='data/', train=False, download=True, transform=data_transform)
         valid_size, learning_rate = 0.1, 0.005
 
-    ######### Build valid dataset #########
-
     num_train = len(train_data)
     indices = list(range(num_train))
     split = int(np.floor(valid_size * num_train))
@@ -103,8 +103,6 @@ if __name__ == '__main__':
 
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
-
-    ######### Build valid dataset #########
 
     trainloader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
     validloader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
@@ -191,6 +189,23 @@ if __name__ == '__main__':
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
             inputs, labels = inputs.cuda(), labels.cuda()
+
+            ########### shift test ###########
+            if slight_disturbance:
+
+                batsh_s, channels, width, height = inputs.shape
+                shift_unit = 1
+                s_u = shift_unit * 2
+                copy_tensor = torch.zeros((batsh_s, channels, width+s_u, height+s_u)).to('cuda')
+
+                init_pos = 1
+                ver_pos = shift_unit + random.randint(-1, 1)
+                her_pos = shift_unit + random.randint(-1, 1)
+
+                copy_tensor[:, :, ver_pos: ver_pos+width, her_pos: her_pos+height] = inputs
+                inputs = copy_tensor[:, :, init_pos: init_pos+width, init_pos: init_pos+height]
+            
+            ########### shift test ###########
 
             outputs = model(inputs)
             loss = criterion(outputs, labels)
